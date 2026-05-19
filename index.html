@@ -128,7 +128,7 @@
         }
     }
 
-    function processGrading() {
+   function processGrading() {
         if (!textData) {
             showError("Please upload a student layout .txt file first.");
             return;
@@ -141,10 +141,12 @@
             return;
         }
 
-        const lines = textData.split('\n');
+        // 🌟 FIX: Splits lines perfectly regardless of hidden Windows/Mac/Linux line breaks
+        const lines = textData.split(/\r?\n/);
         globalResults = [];
 
         lines.forEach(line => {
+            // Skips completely empty lines or meta rows safely
             if (!line.trim() || line.startsWith('|| " ";
                 const correctAns = key[i];
                 const isMath = i < 50;
@@ -169,7 +171,7 @@
         });
 
         if (globalResults.length === 0) {
-            showError(`No student records found matching Variant ${variant} in this file.`);
+            showError(`⚠️ No student records matching Variant ${variant} were detected in this layout file.`);
             document.getElementById('metricsPanel').style.display = 'none';
             document.getElementById('resultsPanel').style.display = 'none';
             document.getElementById('placeholder').style.display = 'flex';
