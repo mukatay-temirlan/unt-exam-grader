@@ -15,15 +15,11 @@
         .panel h3 { margin-top: 0; color: #334155; }
         label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: #475569; }
         select, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 14px; transition: background 0.2s; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 14px; }
         .btn-grade { background-color: #2563eb; color: white; }
-        .btn-grade:hover { background-color: #1d4ed8; }
         .btn-download { background-color: #10b981; color: white; }
-        .btn-download:hover { background-color: #059669; }
         .btn-download:disabled { background-color: #cbd5e1; cursor: not-allowed; }
-        .status-box { font-size: 13px; margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: left; word-break: break-word; }
-        .status-error { color: #dc2626; background-color: #fef2f2; border: 1px solid #fee2e2; }
-        .status-info { color: #1e40af; background-color: #eff6ff; border: 1px solid #bfdbfe; }
+        .status-box { font-size: 13px; margin-top: 15px; padding: 10px; border-radius: 4px; display: block; background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
         .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; display: none; }
         .card { padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; }
         .card span { font-size: 13px; display: block; margin-bottom: 5px; color: #475569; }
@@ -60,10 +56,10 @@
             <label for="fileInput">Upload Layout Text (.txt):</label>
             <input type="file" id="fileInput" accept=".txt">
 
-            <button class="btn-grade" onclick="processGrading()">Calculate & Grade</button>
-            <button class="btn-download" id="downloadBtn" disabled onclick="downloadCSV()">Download CSV Spreadsheet</button>
+            <button class="btn-grade" id="gradeBtn">Calculate & Grade</button>
+            <button class="btn-download" id="downloadBtn" disabled>Download CSV Spreadsheet</button>
 
-            <div class="status-box" id="statusBox"></div>
+            <div class="status-box" id="statusBox">System status: Ready. Please choose a file.</div>
         </div>
 
         <main>
@@ -99,7 +95,6 @@
 </div>
 
 <script>
-    // 🗂️ Answer Keys Registry
     const ANSWER_KEYS = {
         "1": "CDBDD BBDCB BDBCD AAACA CBBCB AACAB CACBA CCDBC BDBDB AAABB CCBBB BBCBC".replace(/\s/g, ""),
         "2": "".replace(/\s/g, ""), 
@@ -109,94 +104,73 @@
     let globalResults = [];
     let textData = "";
 
-    document.getElementById('fileInput').addEventListener('change', function(e) {
+    // Safer event loading setup
+    document.getElementById('fileInput').onchange = function(e) {
         const file = e.target.files[0];
         if (!file) return;
         
-        showStatus(`📄 Loading file: ${file.name}...`, "info");
+        document.getElementById('statusBox').textContent = "📄 Loading file layout...";
         const reader = new FileReader();
         reader.onload = function(evt) {
             textData = evt.target.result;
-            showStatus(`✅ File ready! Total size: ${textData.length} characters. Click 'Calculate & Grade'.`, "info");
+            document.getElementById('statusBox').textContent = "✅ File contents loaded into memory memory successfully.";
         };
         reader.onerror = function() {
-            showStatus("❌ Error reading text file layout from your disk.", "error");
+            alert("Could not process this file format layout.");
         };
         reader.readAsText(file);
-    });
+    };
 
-    function showStatus(msg, type) {
-        const box = document.getElementById('statusBox');
-        if (!msg) {
-            box.style.display = 'none';
+    // Safe direct action mapping
+    document.getElementById('gradeBtn').onclick = function() {
+        if (!textData || textData.trim() === "") {
+            alert("Please pick your text file and let it finish loading first!");
             return;
         }
-        box.textContent = msg;
-        box.className = "status-box " + (type === "error" ? "status-error" : "status-info");
-        box.style.display = 'block';
-    }
 
-    function processGrading() {
-        try {
-            if (!textData || textData.trim() === "") {
-                showStatus("⚠️ Please select and wait for your file to upload before grading.", "error");
-                return;
-            }
-
-            const variant = document.getElementById('variantSelect').value;
-            const key = ANSWER_KEYS[variant];
-            
-            if (!key || key.trim() === "") {
-                showStatus(`⚠️ Answer key for Variant ${variant} is empty or has not been added to the script yet!`, "error");
-                return;
-            }
-
-            const lines = textData.split(/\r?\n/);
-            globalResults = [];
-            let validLinesFound = 0;
-
-            lines.forEach((line, index) => {
-                if (!line.trim() || line.startsWith('|| " ";
-                    const correctAns = key[i];
-                    const isMath = i < 50;
-
-                    if ([" ", "?", ""].includes(studentAns)) {
-                        if (isMath) mathBlank++; else readBlank++;
-                    } else if (studentAns === correctAns) {
-                        if (isMath) { mathCorrect++; mathScore += 4; } 
-                        else { readCorrect++; readScore += 4; }
-                    } else {
-                        if (isMath) { mathWrong++; mathScore -= 1; } 
-                        else { readWrong++; readScore -= 1; }
-                    }
-                }
-
-                globalResults.push({
-                    studentId, fullName: `${lastName} ${firstName}`, variant: studentVariant,
-                    mathCorrect, mathWrong, mathBlank, mathScore,
-                    readCorrect, readWrong, readBlank, readScore,
-                    totalScore: mathScore + readScore
-                });
-            });
-
-            if (globalResults.length === 0) {
-                showStatus(`⚠️ Found ${validLinesFound} total data lines, but ZERO matched Variant ${variant}. Check your selected variant filter or text layout formatting.`, "error");
-                document.getElementById('metricsPanel').style.display = 'none';
-                document.getElementById('resultsPanel').style.display = 'none';
-                document.getElementById('placeholder').style.display = 'flex';
-                document.getElementById('downloadBtn').disabled = true;
-                return;
-            }
-
-            showStatus("", ""); // clear status box
-            renderDashboard(variant);
-
-        } catch (err) {
-            showStatus(`❌ Script Error crashed operation: ${err.message}`, "error");
+        const variant = document.getElementById('variantSelect').value;
+        const key = ANSWER_KEYS[variant];
+        
+        if (!key || key.trim() === "") {
+            alert("Answer key for this variant is currently empty.");
+            return;
         }
-    }
 
-    function renderDashboard(variant) {
+        const lines = textData.split(/\r?\n/);
+        globalResults = [];
+        let matchingRows = 0;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (!line.trim() || line.startsWith('|| " ";
+                const correctAns = key[j];
+                const isMath = j < 50;
+
+                if ([" ", "?", ""].includes(studentAns)) {
+                    if (isMath) mathBlank++; else readBlank++;
+                } else if (studentAns === correctAns) {
+                    if (isMath) { mathCorrect++; mathScore += 4; } 
+                    else { readCorrect++; readScore += 4; }
+                } else {
+                    if (isMath) { mathWrong++; mathScore -= 1; } 
+                    else { readWrong++; readScore -= 1; }
+                }
+            }
+
+            globalResults.push({
+                studentId, fullName: `${lastName} ${firstName}`,
+                mathCorrect, mathWrong, mathScore,
+                readCorrect, readWrong, readScore,
+                totalScore: mathScore + readScore
+            });
+        }
+
+        if (globalResults.length === 0) {
+            alert("Warning: Evaluated all data rows, but 0 lines matched Variant " + variant);
+            return;
+        }
+
+        // Render everything visibly
         document.getElementById('placeholder').style.display = 'none';
         document.getElementById('metricsPanel').style.display = 'grid';
         document.getElementById('resultsPanel').style.display = 'block';
@@ -207,11 +181,10 @@
         const minScore = Math.min(...scores);
         const avgScore = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
 
-        document.getElementById('mTotal').textContent = `${globalResults.length} Students`;
-        document.getElementById('mMax').textContent = `${maxScore} pts`;
-        document.getElementById('mAvg').textContent = `${avgScore} pts`;
-        document.getElementById('mMin').textContent = `${minScore} pts`;
-        document.getElementById('tableTitle').textContent = `Grading Sheets — Variant ${variant}`;
+        document.getElementById('mTotal').textContent = globalResults.length + " Students";
+        document.getElementById('mMax').textContent = maxScore + " pts";
+        document.getElementById('mAvg').textContent = avgScore + " pts";
+        document.getElementById('mMin').textContent = minScore + " pts";
 
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
@@ -222,30 +195,28 @@
             tr.innerHTML = `
                 <td style="font-family: monospace;">${row.studentId}</td>
                 <td style="font-weight: 500;">${row.fullName}</td>
-                <td>${row.mathScore} <span style="font-size:12px; color:#64748b">(${row.mathCorrect}R / ${row.mathWrong}W)</span></td>
-                <td>${row.readScore} <span style="font-size:12px; color:#64748b">(${row.readCorrect}R / ${row.readWrong}W)</span></td>
+                <td>${row.mathScore} <span style="font-size:12px; color:#64748b">(${row.mathCorrect}R)</span></td>
+                <td>${row.readScore} <span style="font-size:12px; color:#64748b">(${row.readCorrect}R)</span></td>
                 <td style="font-weight: bold; color: #2563eb;">${row.totalScore} pts</td>
             `;
             tbody.appendChild(tr);
         });
-    }
+    };
 
-    function downloadCSV() {
+    document.getElementById('downloadBtn').onclick = function() {
         if (globalResults.length === 0) return;
-        const headers = ["Student ID", "Full Name", "Variant", "Math Correct", "Math Wrong", "Math Score", "Reading Correct", "Reading Wrong", "Reading Score", "Total Score"];
-        const rows = globalResults.map(r => [r.studentId, r.fullName, r.variant, r.mathCorrect, r.mathWrong, r.mathScore, r.readCorrect, r.readWrong, r.readScore, r.totalScore]);
-        
+        const headers = ["Student ID", "Full Name", "Math Score", "Reading Score", "Total Score"];
+        const rows = globalResults.map(r => [r.studentId, r.fullName, r.mathScore, r.readScore, r.totalScore]);
         const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        const variant = document.getElementById('variantSelect').value;
         link.setAttribute("href", url);
-        link.setAttribute("download", `variant_${variant}_grading_results.csv`);
+        link.setAttribute("download", "grading_results.csv");
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-    }
+    };
 </script>
 </body>
 </html>
