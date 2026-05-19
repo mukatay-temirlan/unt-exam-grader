@@ -1,1 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 UNT Exam Grading Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; padding: 30px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; marginBottom: 30px; margin-bottom: 30px; }
+        h1 { margin: 0; color: #0f172a; }
+        p { margin: 5px 0 0; color: #64748b; }
+        .layout { display: grid; grid-template-columns: 300px 1fr; gap: 30px; margin-top: 20px; }
+        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); height: fit-content; border: 1px solid #e2e8f0; }
+        .panel h3 { margin-top: 0; color: #334155; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: #475569; }
+        select, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 14px; transition: background 0.2s; }
+        .btn-grade { background-color: #2563eb; color: white; }
+        .btn-grade:hover { background-color: #1d4ed8; }
+        .btn-download { background-color: #10b981; color: white; }
+        .btn-download:hover { background-color: #059669; }
+        .btn-download:disabled { background-color: #cbd5e1; cursor: not-allowed; }
+        .error-box { color: #dc2626; font-size: 13px; margin-top: 15px; background-color: #fef2f2; padding: 10px; border-radius: 4px; border: 1px solid #fee2e2; display: none; }
+        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; display: none; }
+        .card { padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; }
+        .card span { fontSize: 13px; display: block; margin-bottom: 5px; }
+        .card div { font-size: 24px; }
+        .c-total { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+        .c-max { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .c-avg { background: #fff7ed; border: 1px solid #ffedd5; color: #9a3412; }
+        .c-min { background: #fef2f2; border: 1px solid #fee2e2; color: #991b1b; }
+        .results-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; display: none; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        th { background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1; padding: 10px; }
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+        .placeholder { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 50px 0; text-align: center; color: #94a3b8; }
+    </style>
+</head>
+<body>
 
+<div class="container">
+    <header>
+        <h1>📊 UNT Exam Grading Dashboard</h1>
+        <p>Upload raw layout .txt matrices to run score processing instantly right in your browser.</p>
+    </header>
+
+    <div class="layout">
+        <div class="panel">
+            <h3>Control Center</h3>
+            <label for="variantSelect">Select Variant:</label>
+            <select id="variantSelect">
+                <option value="1">Variant 1</option>
+                <option value="2">Variant 2</option>
+                <option value="3">Variant 3</option>
+            </select>
+
+            <label for="fileInput">Upload Layout Text (.txt):</label>
+            <input type="file" id="fileInput" accept=".txt">
+
+            <button class="btn-grade" onclick="processGrading()">Calculate & Grade</button>
+            <button class="btn-download" id="downloadBtn" disabled onclick="downloadCSV()">Download CSV Spreadsheet</button>
+
+            <div class="error-box" id="errorBox"></div>
+        </div>
+
+        <main>
+            <div class="metrics" id="metricsPanel">
+                <div class="card c-total"><span>Graded Count</span><div id="mTotal">0 Students</div></div>
+                <div class="card c-max"><span>Top Score</span><div id="mMax">0 pts</div></div>
+                <div class="card c-avg"><span>Class Average</span><div id="mAvg">0 pts</div></div>
+                <div class="card c-min"><span>Lowest Score</span><div id="mMin">0 pts</div></div>
+            </div>
+
+            <div id="placeholder" class="placeholder">
+                <span style="font-size: 48px;">📁</span>
+                <p>No file graded yet. Choose a layout file and click "Calculate & Grade".</p>
+            </div>
+
+            <div class="results-box" id="resultsPanel">
+                <h3 style="margin-top:0;" id="tableTitle">Grading Sheets</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Full Name</th>
+                            <th>Math Score</th>
+                            <th>Reading Score</th>
+                            <th style="color: #2563eb;">Total Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+    // 🗂️ Answer Keys Registry
+    const ANSWER_KEYS = {
+        "1": "CDBDD BBDCB BDBCD AAACA CBBCB AACAB CACBA CCDBC BDBDB AAABB CCBBB BBCBC".replace(/\s/g, ""),
+        "2": "".replace(/\s/g, ""), // Paste Variant 2 key here when ready
+        "3": "".replace(/\s/g, "")  // Paste Variant 3 key here when ready
+    };
+
+    let globalResults = [];
+    let textData = "";
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            textData = evt.target.result;
+            showError("");
+        };
+        reader.readAsText(file);
+    });
+
+    function showError(msg) {
+        const err = document.getElementById('errorBox');
+        if (msg) {
+            err.textContent = msg;
+            err.style.display = 'block';
+        } else {
+            err.style.display = 'none';
+        }
+    }
+
+    function processGrading() {
+        if (!textData) {
+            showError("Please upload a student layout .txt file first.");
+            return;
+        }
+        const variant = document.getElementById('variantSelect').value;
+        const key = ANSWER_KEYS[variant];
+        
+        if (!key) {
+            showError(`Answer key for Variant ${variant} has not been configured yet.`);
+            return;
+        }
+
+        const lines = textData.split('\n');
+        globalResults = [];
+
+        lines.forEach(line => {
+            if (!line.trim() || line.startsWith('|| " ";
+                const correctAns = key[i];
+                const isMath = i < 50;
+
+                if ([" ", "?", ""].includes(studentAns)) {
+                    if (isMath) mathBlank++; else readBlank++;
+                } else if (studentAns === correctAns) {
+                    if (isMath) { mathCorrect++; mathScore += 4; } 
+                    else { readCorrect++; readScore += 4; }
+                } else {
+                    if (isMath) { mathWrong++; mathScore -= 1; } 
+                    else { readWrong++; readScore -= 1; }
+                }
+            }
+
+            globalResults.push({
+                studentId, fullName: `${lastName} ${firstName}`, variant: studentVariant,
+                mathCorrect, mathWrong, mathBlank, mathScore,
+                readCorrect, readWrong, readBlank, readScore,
+                totalScore: mathScore + readScore
+            });
+        });
+
+        if (globalResults.length === 0) {
+            showError(`No student records found matching Variant ${variant} in this file.`);
+            document.getElementById('metricsPanel').style.display = 'none';
+            document.getElementById('resultsPanel').style.display = 'none';
+            document.getElementById('placeholder').style.display = 'flex';
+            document.getElementById('downloadBtn').disabled = true;
+            return;
+        }
+
+        showError("");
+        renderDashboard(variant);
+    }
+
+    function renderDashboard(variant) {
+        document.getElementById('placeholder').style.display = 'none';
+        document.getElementById('metricsPanel').style.display = 'grid';
+        document.getElementById('resultsPanel').style.display = 'block';
+        document.getElementById('downloadBtn').disabled = false;
+
+        const scores = globalResults.map(r => r.totalScore);
+        const maxScore = Math.max(...scores);
+        const minScore = Math.min(...scores);
+        const avgScore = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+
+        document.getElementById('mTotal').textContent = `${globalResults.length} Students`;
+        document.getElementById('mMax').textContent = `${maxScore} pts`;
+        document.getElementById('mAvg').textContent = `${avgScore} pts`;
+        document.getElementById('mMin').textContent = `${minScore} pts`;
+        document.getElementById('tableTitle').textContent = `Grading Sheets — Variant ${variant}`;
+
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = "";
+        
+        globalResults.forEach((row, idx) => {
+            const tr = document.createElement('tr');
+            tr.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+            tr.innerHTML = `
+                <td style="font-family: monospace;">${row.studentId}</td>
+                <td style="font-weight: 500;">${row.fullName}</td>
+                <td>${row.mathScore} <span style="font-size:12px; color:#64748b">(${row.mathCorrect}R / ${row.mathWrong}W)</span></td>
+                <td>${row.readScore} <span style="font-size:12px; color:#64748b">(${row.readCorrect}R / ${row.readWrong}W)</span></td>
+                <td style="font-weight: bold; color: #2563eb;">${row.totalScore} pts</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function downloadCSV() {
+        if (globalResults.length === 0) return;
+        const headers = ["Student ID", "Full Name", "Variant", "Math Correct", "Math Wrong", "Math Score", "Reading Correct", "Reading Wrong", "Reading Score", "Total Score"];
+        const rows = globalResults.map(r => [r.studentId, r.fullName, r.variant, r.mathCorrect, r.mathWrong, r.mathScore, r.readCorrect, r.readWrong, r.readScore, r.totalScore]);
+        
+        const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const variant = document.getElementById('variantSelect').value;
+        link.setAttribute("href", url);
+        link.setAttribute("download", `variant_${variant}_grading_results.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+</body>
+</html>
