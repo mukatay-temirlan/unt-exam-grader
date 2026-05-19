@@ -7,7 +7,7 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f8fafc; color: #1e293b; margin: 0; padding: 30px; }
         .container { max-width: 1200px; margin: 0 auto; }
-        header { border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; marginBottom: 30px; margin-bottom: 30px; }
+        header { border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
         h1 { margin: 0; color: #0f172a; }
         p { margin: 5px 0 0; color: #64748b; }
         .layout { display: grid; grid-template-columns: 300px 1fr; gap: 30px; margin-top: 20px; }
@@ -21,10 +21,12 @@
         .btn-download { background-color: #10b981; color: white; }
         .btn-download:hover { background-color: #059669; }
         .btn-download:disabled { background-color: #cbd5e1; cursor: not-allowed; }
-        .error-box { color: #dc2626; font-size: 13px; margin-top: 15px; background-color: #fef2f2; padding: 10px; border-radius: 4px; border: 1px solid #fee2e2; display: none; }
+        .status-box { font-size: 13px; margin-top: 15px; padding: 10px; border-radius: 4px; display: none; text-align: left; word-break: break-word; }
+        .status-error { color: #dc2626; background-color: #fef2f2; border: 1px solid #fee2e2; }
+        .status-info { color: #1e40af; background-color: #eff6ff; border: 1px solid #bfdbfe; }
         .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; display: none; }
         .card { padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; }
-        .card span { fontSize: 13px; display: block; margin-bottom: 5px; }
+        .card span { font-size: 13px; display: block; margin-bottom: 5px; color: #475569; }
         .card div { font-size: 24px; }
         .c-total { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
         .c-max { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
@@ -34,7 +36,7 @@
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
         th { background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1; padding: 10px; }
         td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
-        .placeholder { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 50px 0; text-align: center; color: #94a3b8; }
+        .placeholder { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 50px 0; text-align: center; color: #94a3b8; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -61,7 +63,7 @@
             <button class="btn-grade" onclick="processGrading()">Calculate & Grade</button>
             <button class="btn-download" id="downloadBtn" disabled onclick="downloadCSV()">Download CSV Spreadsheet</button>
 
-            <div class="error-box" id="errorBox"></div>
+            <div class="status-box" id="statusBox"></div>
         </div>
 
         <main>
@@ -100,8 +102,8 @@
     // 🗂️ Answer Keys Registry
     const ANSWER_KEYS = {
         "1": "CDBDD BBDCB BDBCD AAACA CBBCB AACAB CACBA CCDBC BDBDB AAABB CCBBB BBCBC".replace(/\s/g, ""),
-        "2": "".replace(/\s/g, ""), // Paste Variant 2 key here when ready
-        "3": "".replace(/\s/g, "")  // Paste Variant 3 key here when ready
+        "2": "".replace(/\s/g, ""), 
+        "3": "".replace(/\s/g, "")  
     };
 
     let globalResults = [];
@@ -110,77 +112,88 @@
     document.getElementById('fileInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
+        
+        showStatus(`📄 Loading file: ${file.name}...`, "info");
         const reader = new FileReader();
         reader.onload = function(evt) {
             textData = evt.target.result;
-            showError("");
+            showStatus(`✅ File ready! Total size: ${textData.length} characters. Click 'Calculate & Grade'.`, "info");
+        };
+        reader.onerror = function() {
+            showStatus("❌ Error reading text file layout from your disk.", "error");
         };
         reader.readAsText(file);
     });
 
-    function showError(msg) {
-        const err = document.getElementById('errorBox');
-        if (msg) {
-            err.textContent = msg;
-            err.style.display = 'block';
-        } else {
-            err.style.display = 'none';
+    function showStatus(msg, type) {
+        const box = document.getElementById('statusBox');
+        if (!msg) {
+            box.style.display = 'none';
+            return;
         }
+        box.textContent = msg;
+        box.className = "status-box " + (type === "error" ? "status-error" : "status-info");
+        box.style.display = 'block';
     }
 
-   function processGrading() {
-        if (!textData) {
-            showError("Please upload a student layout .txt file first.");
-            return;
-        }
-        const variant = document.getElementById('variantSelect').value;
-        const key = ANSWER_KEYS[variant];
-        
-        if (!key) {
-            showError(`Answer key for Variant ${variant} has not been configured yet.`);
-            return;
-        }
-
-        // 🌟 FIX: Splits lines perfectly regardless of hidden Windows/Mac/Linux line breaks
-        const lines = textData.split(/\r?\n/);
-        globalResults = [];
-
-        lines.forEach(line => {
-            // Skips completely empty lines or meta rows safely
-            if (!line.trim() || line.startsWith('|| " ";
-                const correctAns = key[i];
-                const isMath = i < 50;
-
-                if ([" ", "?", ""].includes(studentAns)) {
-                    if (isMath) mathBlank++; else readBlank++;
-                } else if (studentAns === correctAns) {
-                    if (isMath) { mathCorrect++; mathScore += 4; } 
-                    else { readCorrect++; readScore += 4; }
-                } else {
-                    if (isMath) { mathWrong++; mathScore -= 1; } 
-                    else { readWrong++; readScore -= 1; }
-                }
+    function processGrading() {
+        try {
+            if (!textData || textData.trim() === "") {
+                showStatus("⚠️ Please select and wait for your file to upload before grading.", "error");
+                return;
             }
 
-            globalResults.push({
-                studentId, fullName: `${lastName} ${firstName}`, variant: studentVariant,
-                mathCorrect, mathWrong, mathBlank, mathScore,
-                readCorrect, readWrong, readBlank, readScore,
-                totalScore: mathScore + readScore
+            const variant = document.getElementById('variantSelect').value;
+            const key = ANSWER_KEYS[variant];
+            
+            if (!key || key.trim() === "") {
+                showStatus(`⚠️ Answer key for Variant ${variant} is empty or has not been added to the script yet!`, "error");
+                return;
+            }
+
+            const lines = textData.split(/\r?\n/);
+            globalResults = [];
+            let validLinesFound = 0;
+
+            lines.forEach((line, index) => {
+                if (!line.trim() || line.startsWith('|| " ";
+                    const correctAns = key[i];
+                    const isMath = i < 50;
+
+                    if ([" ", "?", ""].includes(studentAns)) {
+                        if (isMath) mathBlank++; else readBlank++;
+                    } else if (studentAns === correctAns) {
+                        if (isMath) { mathCorrect++; mathScore += 4; } 
+                        else { readCorrect++; readScore += 4; }
+                    } else {
+                        if (isMath) { mathWrong++; mathScore -= 1; } 
+                        else { readWrong++; readScore -= 1; }
+                    }
+                }
+
+                globalResults.push({
+                    studentId, fullName: `${lastName} ${firstName}`, variant: studentVariant,
+                    mathCorrect, mathWrong, mathBlank, mathScore,
+                    readCorrect, readWrong, readBlank, readScore,
+                    totalScore: mathScore + readScore
+                });
             });
-        });
 
-        if (globalResults.length === 0) {
-            showError(`⚠️ No student records matching Variant ${variant} were detected in this layout file.`);
-            document.getElementById('metricsPanel').style.display = 'none';
-            document.getElementById('resultsPanel').style.display = 'none';
-            document.getElementById('placeholder').style.display = 'flex';
-            document.getElementById('downloadBtn').disabled = true;
-            return;
+            if (globalResults.length === 0) {
+                showStatus(`⚠️ Found ${validLinesFound} total data lines, but ZERO matched Variant ${variant}. Check your selected variant filter or text layout formatting.`, "error");
+                document.getElementById('metricsPanel').style.display = 'none';
+                document.getElementById('resultsPanel').style.display = 'none';
+                document.getElementById('placeholder').style.display = 'flex';
+                document.getElementById('downloadBtn').disabled = true;
+                return;
+            }
+
+            showStatus("", ""); // clear status box
+            renderDashboard(variant);
+
+        } catch (err) {
+            showStatus(`❌ Script Error crashed operation: ${err.message}`, "error");
         }
-
-        showError("");
-        renderDashboard(variant);
     }
 
     function renderDashboard(variant) {
