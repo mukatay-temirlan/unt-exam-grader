@@ -17,9 +17,10 @@
         select, input[type="file"] { width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box; }
         button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 14px; }
         .btn-grade { background-color: #2563eb; color: white; }
+        .btn-grade:hover { background-color: #1d4ed8; }
         .btn-download { background-color: #10b981; color: white; }
         .btn-download:disabled { background-color: #cbd5e1; cursor: not-allowed; }
-        .status-box { font-size: 13px; margin-top: 15px; padding: 10px; border-radius: 4px; display: block; background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+        .status-box { font-size: 13px; margin-top: 15px; padding: 10px; border-radius: 4px; display: block; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 500; }
         .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; display: none; }
         .card { padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; }
         .card span { font-size: 13px; display: block; margin-bottom: 5px; color: #475569; }
@@ -56,10 +57,10 @@
             <label for="fileInput">Upload Layout Text (.txt):</label>
             <input type="file" id="fileInput" accept=".txt">
 
-            <button class="btn-grade" id="gradeBtn">Calculate & Grade</button>
-            <button class="btn-download" id="downloadBtn" disabled>Download CSV Spreadsheet</button>
+            <button class="btn-grade" onclick="processGrading()">Calculate & Grade</button>
+            <button class="btn-download" id="downloadBtn" disabled onclick="downloadCSV()">Download CSV Spreadsheet</button>
 
-            <div class="status-box" id="statusBox">System status: Ready. Please choose a file.</div>
+            <div class="status-box" id="statusBox">Status: Waiting for file...</div>
         </div>
 
         <main>
@@ -108,21 +109,24 @@
         const file = e.target.files[0];
         if (!file) return;
         
-        document.getElementById('statusBox').textContent = "📄 Loading file layout...";
+        document.getElementById('statusBox').textContent = "📄 Reading file layers...";
         const reader = new FileReader();
         reader.onload = function(evt) {
             textData = evt.target.result;
-            document.getElementById('statusBox').textContent = "✅ File contents loaded successfully.";
+            document.getElementById('statusBox').style.backgroundColor = "#ecfdf5";
+            document.getElementById('statusBox').style.color = "#065f46";
+            document.getElementById('statusBox').style.borderColor = "#a7f3d0";
+            document.getElementById('statusBox').textContent = "✅ File loaded! Click 'Calculate & Grade'.";
         };
         reader.onerror = function() {
-            alert("Could not process this file format layout.");
+            document.getElementById('statusBox').textContent = "❌ Error reading file.";
         };
         reader.readAsText(file);
     };
 
-    document.getElementById('gradeBtn').onclick = function() {
+    function processGrading() {
         if (!textData || textData.trim() === "") {
-            alert("Please pick your text file and let it finish loading first!");
+            alert("Please pick your layout text file using the 'Choose File' button first!");
             return;
         }
 
@@ -130,7 +134,7 @@
         const key = ANSWER_KEYS[variant];
         
         if (!key || key.trim() === "") {
-            alert("Answer key for this variant is currently empty.");
+            alert("Answer key for Variant " + variant + " is empty inside the script code registry.");
             return;
         }
 
@@ -144,7 +148,7 @@
                 const isMath = j < 50;
 
                 if ([" ", "?", ""].includes(studentAns)) {
-                    if (isMath) mathBlank++; else readBlank++;
+                    continue;
                 } else if (studentAns === correctAns) {
                     if (isMath) { mathCorrect++; mathScore += 4; } 
                     else { readCorrect++; readScore += 4; }
@@ -155,7 +159,7 @@
             }
 
             globalResults.push({
-                studentId: currentStudentId, 
+                studentId: sId, 
                 fullName: lastName + " " + firstName,
                 mathCorrect: mathCorrect,
                 mathScore: mathScore,
@@ -166,7 +170,7 @@
         }
 
         if (globalResults.length === 0) {
-            alert("Warning: Evaluated all data rows, but 0 lines matched Variant " + variant);
+            alert("Zero lines matched Variant " + variant + ". Make sure your dropdown selection matches the variant number in the text file!");
             return;
         }
 
@@ -200,9 +204,9 @@
             `;
             tbody.appendChild(tr);
         });
-    };
+    }
 
-    document.getElementById('downloadBtn').onclick = function() {
+    function downloadCSV() {
         if (globalResults.length === 0) return;
         const headers = ["Student ID", "Full Name", "Math Score", "Reading Score", "Total Score"];
         const rows = globalResults.map(r => [r.studentId, r.fullName, r.mathScore, r.readScore, r.totalScore]);
@@ -215,7 +219,7 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-    };
+    }
 </script>
 </body>
 </html>
