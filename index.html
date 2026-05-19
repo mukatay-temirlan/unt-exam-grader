@@ -104,7 +104,6 @@
 
     let globalResults = [];
 
-    // Master execution function: Handles file loading and grading inside a single click loop
     function startGradingPipeline() {
         const fileInput = document.getElementById('fileInput');
         const statusBox = document.getElementById('statusBox');
@@ -180,7 +179,6 @@
             return;
         }
 
-        // Show layout cards
         document.getElementById('placeholder').style.display = 'none';
         document.getElementById('metricsPanel').style.display = 'grid';
         document.getElementById('resultsPanel').style.display = 'block';
