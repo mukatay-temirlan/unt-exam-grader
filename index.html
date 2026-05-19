@@ -20,7 +20,7 @@
         .btn-grade:hover { background-color: #1d4ed8; }
         .btn-download { background-color: #10b981; color: white; }
         .btn-download:disabled { background-color: #cbd5e1; cursor: not-allowed; }
-        .status-box { font-size: 13px; margin-top: 15px; padding: 10px; border-radius: 4px; display: block; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 500; text-align: center; }
+        .status-box { font-size: 13px; margin-top: 15px; padding: 10px; border-radius: 4px; display: block; background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 500; text-align: center; word-break: break-word; }
         .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; display: none; }
         .card { padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; }
         .card span { font-size: 13px; display: block; margin-bottom: 5px; color: #475569; }
@@ -104,39 +104,53 @@
 
     let globalResults = [];
 
+    function updateStatus(text, bg = "#f1f5f9", color = "#334155", border = "#cbd5e1") {
+        const box = document.getElementById('statusBox');
+        box.textContent = text;
+        box.style.backgroundColor = bg;
+        box.style.color = color;
+        box.style.borderColor = border;
+    }
+
     function startGradingPipeline() {
-        const fileInput = document.getElementById('fileInput');
-        const statusBox = document.getElementById('statusBox');
-        
-        if (!fileInput.files || fileInput.files.length === 0) {
-            alert("⚠️ Please select your layout file first using the 'Choose File' button!");
-            return;
+        try {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("⚠️ Please pick your text file layout using 'Choose File' first!");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            updateStatus("⏳ Processing text document architecture...", "#eff6ff", "#1e40af", "#bfdbfe");
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const rawText = evt.target.result;
+                    if (!rawText || rawText.trim() === "") {
+                        updateStatus("❌ The selected file is completely empty.", "#fef2f2", "#991b1b", "#fee2e2");
+                        return;
+                    }
+                    executeGradingLogic(rawText);
+                } catch (innerErr) {
+                    updateStatus("❌ Reader Crash: " + innerErr.message, "#fef2f2", "#991b1b", "#fee2e2");
+                }
+            };
+            reader.onerror = function() {
+                updateStatus("❌ Error: Web browser failed to read file from disk.", "#fef2f2", "#991b1b", "#fee2e2");
+            };
+            reader.readAsText(file);
+        } catch (globalErr) {
+            updateStatus("❌ Critical Pipeline Error: " + globalErr.message, "#fef2f2", "#991b1b", "#fee2e2");
         }
-
-        const file = fileInput.files[0];
-        statusBox.style.backgroundColor = "#eff6ff";
-        statusBox.style.color = "#1e40af";
-        statusBox.textContent = "⏳ Reading and evaluating data...";
-
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            const rawText = evt.target.result;
-            executeGradingLogic(rawText);
-        };
-        reader.onerror = function() {
-            alert("❌ Browser failed to read file from disk.");
-            statusBox.textContent = "Error occurred.";
-        };
-        reader.readAsText(file);
     }
 
     function executeGradingLogic(textData) {
         const variant = document.getElementById('variantSelect').value;
         const key = ANSWER_KEYS[variant];
-        const statusBox = document.getElementById('statusBox');
         
         if (!key || key.trim() === "") {
-            alert("Answer key for Variant " + variant + " is missing inside the template.");
+            alert("Answer key for Variant " + variant + " is empty inside the registry layout.");
             return;
         }
 
@@ -155,14 +169,14 @@
                     if (isMath) { mathCorrect++; mathScore += 4; } 
                     else { readCorrect++; readScore += 4; }
                 } else {
-                    if (isMath) { mathWrong++; mathScore -= 1; } 
-                    else { readWrong++; readScore -= 1; }
+                    if (isMath) { mathScore -= 1; } 
+                    else { readScore -= 1; }
                 }
             }
 
             globalResults.push({
                 studentId: sId, 
-                fullName: lastName + " " + firstName,
+                fullName: (lastName + " " + firstName).trim() || "Unknown Student",
                 mathCorrect: mathCorrect,
                 mathScore: mathScore,
                 readCorrect: readCorrect,
@@ -172,13 +186,12 @@
         }
 
         if (globalResults.length === 0) {
-            alert("⚠️ Matrix complete, but 0 lines matched Variant " + variant + ".\n\nDouble check that the variant dropdown on the left matches the variant number written inside your text file lines!");
-            statusBox.style.backgroundColor = "#fef2f2";
-            statusBox.style.color = "#991b1b";
-            statusBox.textContent = "❌ Variant Mismatch";
+            updateStatus("⚠️ No lines matched Variant " + variant + ". Check your file mapping configuration.", "#ffedd5", "#9a3412", "#ffedd5");
+            alert("⚠️ File evaluated, but 0 records matched Variant " + variant + ".\n\nVerify that the dropdown selection matches the target matrix content.");
             return;
         }
 
+        // Render UI panels safely
         document.getElementById('placeholder').style.display = 'none';
         document.getElementById('metricsPanel').style.display = 'grid';
         document.getElementById('resultsPanel').style.display = 'block';
@@ -194,9 +207,7 @@
         document.getElementById('mAvg').textContent = avgScore + " pts";
         document.getElementById('mMin').textContent = minScore + " pts";
 
-        statusBox.style.backgroundColor = "#ecfdf5";
-        statusBox.style.color = "#065f46";
-        statusBox.textContent = "✅ Grading Successfully Rendered!";
+        updateStatus("✅ Metrics populated successfully!", "#ecfdf5", "#065f46", "#a7f3d0");
 
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
