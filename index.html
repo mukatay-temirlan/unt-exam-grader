@@ -104,7 +104,6 @@
     let globalResults = [];
     let textData = "";
 
-    // Safer event loading setup
     document.getElementById('fileInput').onchange = function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -113,7 +112,7 @@
         const reader = new FileReader();
         reader.onload = function(evt) {
             textData = evt.target.result;
-            document.getElementById('statusBox').textContent = "✅ File contents loaded into memory memory successfully.";
+            document.getElementById('statusBox').textContent = "✅ File contents loaded successfully.";
         };
         reader.onerror = function() {
             alert("Could not process this file format layout.");
@@ -121,7 +120,6 @@
         reader.readAsText(file);
     };
 
-    // Safe direct action mapping
     document.getElementById('gradeBtn').onclick = function() {
         if (!textData || textData.trim() === "") {
             alert("Please pick your text file and let it finish loading first!");
@@ -138,7 +136,6 @@
 
         const lines = textData.split(/\r?\n/);
         globalResults = [];
-        let matchingRows = 0;
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -158,9 +155,12 @@
             }
 
             globalResults.push({
-                studentId, fullName: `${lastName} ${firstName}`,
-                mathCorrect, mathWrong, mathScore,
-                readCorrect, readWrong, readScore,
+                studentId: currentStudentId, 
+                fullName: lastName + " " + firstName,
+                mathCorrect: mathCorrect,
+                mathScore: mathScore,
+                readCorrect: readCorrect,
+                readScore: readScore,
                 totalScore: mathScore + readScore
             });
         }
@@ -170,7 +170,6 @@
             return;
         }
 
-        // Render everything visibly
         document.getElementById('placeholder').style.display = 'none';
         document.getElementById('metricsPanel').style.display = 'grid';
         document.getElementById('resultsPanel').style.display = 'block';
